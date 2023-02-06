@@ -134,8 +134,8 @@ def get_marker_positions(t_vec):
             z = t_vec[2]
             return x, y, z
 
-def draw_axis(frame, matrix_coefficients, distortion_coefficients, r_vec, t_vec, 0.01):
-    cv2.aruco.drawAxis(frame, matrix_coefficients, distortion_coefficients, r_vec, t_vec, 0.01)
+def draw_axis(frame, matrix_coefficients, distortion_coefficients, r_vec, t_vec, num = 0.01):
+    cv2.aruco.drawAxis(frame, matrix_coefficients, distortion_coefficients, r_vec, t_vec, num)
 
 
 def convert_byte_array_to_string(byte_array: bytearray) -> str:

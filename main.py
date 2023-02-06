@@ -1,6 +1,5 @@
 import cv2
 import time
-
 import serial
 import vlc
 import datetime
@@ -14,7 +13,7 @@ type = "DICT_4X4_50"
 WINDOW_NAME = 'PEM1 WS22/23'
 marker_size_in_CM = 15.9
 results = dict()
-waiting, measuring = False
+waiting, measuring = False, True
 set_point = 25
 reset = False
 waiting_time = 30
@@ -48,10 +47,10 @@ ser = serial.Serial(
 )
 
 # initialize video capture object to read video from external webcam
-video_capture = cv2.VideoCapture(1)
+video_capture = cv2.VideoCapture(0)
 # if there is no external camera then take the built-in camera
-if not video_capture.read()[0]:
-    video_capture = cv2.VideoCapture(0)
+# if not video_capture.read()[0]:
+#     video_capture = cv2.VideoCapture(0)
 
 time.sleep(2.0)
 
@@ -64,6 +63,7 @@ def on_change(value):
 # Full screen mode
 cv2.namedWindow(WINDOW_NAME, cv2.WND_PROP_FULLSCREEN)
 cv2.setWindowProperty(WINDOW_NAME, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+cv2.startWindowThread()
 
 # could be used to set the distance
 cv2.createTrackbar('distance', WINDOW_NAME, set_point, 100, on_change)
