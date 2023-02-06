@@ -6,8 +6,6 @@ import datetime
 import numpy as np
 from typing import Optional
 from utils import ARUCO_DICT, get_screen_dimensions, resize_frame, Modes, get_marker_positions, draw_axis, convert_byte_array_to_string
-# import required libraries
-from vidgear.gears import CamGear
 
 
 # define suitable tweak parameters for your stream.
@@ -28,8 +26,8 @@ detector = cv2.aruco.ArucoDetector(dictionary, parameters)
 # arucoDict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_6X6_50)
 # arucoParams = cv2.aruco.DetectorParameters_create()
 
-#cap = cv2.VideoCapture(0)
-stream = CamGear(source=0, logging=True, **options).start()
+cap = cv2.VideoCapture(0)
+#stream = CamGear(source=0, logging=True, **options).start()
 # Full screen mode
 cv2.namedWindow(WINDOW_NAME, cv2.WND_PROP_FULLSCREEN)
 #cv2.setWindowProperty(WINDOW_NAME, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
@@ -42,15 +40,28 @@ def on_change(value):
 # could be used to set the distance
 # cv2.createTrackbar('distance', WINDOW_NAME, 25, 100, on_change)
 
+cap = cv2.VideoCapture(0)
+# Full screen mode
+cv2.namedWindow(WINDOW_NAME, cv2.WND_PROP_FULLSCREEN)
+#cv2.setWindowProperty(WINDOW_NAME, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+cv2.startWindowThread()
+
+# is needed to set the window to full screen
+def on_change(value):
+    pass
+
+# could be used to set the distance
+# cv2.createTrackbar('distance', WINDOW_NAME, 25, 100, on_change)
+
+measuring = False
+group_id = None
+markerID = None
+mid_point = (1920/2,1080/2)
 
 try: 
     while(True):
-        #ret, frame = cap.read()
-        ret,frame = True, stream.read()
-        
-        # check for frame if Nonetype
-        if frame is None:
-            break
+        ret, frame = cap.read()
+        #ret,frame = True, stream.read()
 
         corners, ids, rejected = detector.detectMarkers(frame)
         print("frame size: " + str(frame.size))
@@ -81,26 +92,53 @@ try:
                 cX = int((topLeft[0] + bottomRight[0]) / 2.0)
                 cY = int((topLeft[1] + bottomRight[1]) / 2.0)
 
-                # draw the ArUco marker ID on the image
-                #text = "Gruppe: " + str(markerID) + " \n" + "Abweichung x: " + str(cX) + "px" + " \n" + "Abweichung y: " + str(cY) + "px"
+                mm_per_pixel = 30.0/((topRight[0] - topLeft[0]) + (bottomRight[0] - bottomLeft[0])/2)
 
-                # y0, dy = 50, 50
-                # for i, line in enumerate(text.split('\n')):
-                #     y = y0 + i*40
-                #     cv2.putText(frame, line, (50, y ), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0),2,cv2.LINE_AA)
+                x_dev = (mid_point[0]-cX)*mm_per_pixel
+                y_dev = (mid_point[1]-cY)*mm_per_pixel
+
+                group_id = markerID
+        else: 
+            cX = None
+            cY = None
+        #draw the ArUco marker ID on the image
+        text = "Gruppe: " + str(markerID) + " \n" + "Abweichung x: " + str(cX) + "px" + " \n" + "Abweichung y: " + str(cY) + "px"
+
+        y0, dy = 50, 50
+        for i, line in enumerate(text.split('\n')):
+            y = y0 + i*40
+            cv2.putText(frame, line, (50, y ), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0),2,cv2.LINE_AA)
 
 
         cv2.imshow(WINDOW_NAME, frame)
 
-        if cv2.waitKey(1) & 0xFF == ord('q'):
+        key = cv2.waitKey(1) & 0xFF
+        if key == ord("q"):
             break
-except: 
-    #cap.release()
-    stream.stop()
+        elif key == ord("s"):
+            if not measuring:
+                measuring = True
+                tic = time.time()
+                results = {"x" : [], "y" : []}
+            else:
+                measuring = False
+                break
+
+
+        if measuring:
+            results["x"].append(cX)
+            results["y"].append(cY)
+            if (time.time() - tic) > 30:
+                measuring = False
+                # Show Final result
+except Exception as e: 
+    cap.release()
+    #stream.stop()
     cv2.destroyAllWindows()
     cv2.waitKey(5)
+    print(e)
 finally:
-    #cap.release()
-    stream.stop()
+    cap.release()
+    #stream.stop()
     cv2.destroyAllWindows()
     cv2.waitKey(5)
