@@ -2,6 +2,8 @@ import cv2
 import ctypes
 from enum import Enum, auto
 
+import numpy as np
+
 ARUCO_DICT = {
     "DICT_4X4_50": cv2.aruco.DICT_4X4_50,
     "DICT_4X4_100": cv2.aruco.DICT_4X4_100,
@@ -33,7 +35,7 @@ class Modes(Enum):
     SEARCHING_GROUP_CAR = auto()  # truck found, searching pem group car
     READY = auto()  # waiting to start the measuring phase, doing small overview with values, no averaging over time
     WAITING_PHASE = auto()  # phase to wait to measuring phase -> 30s
-    MEASURING_PHASE = auto()  # measuring phase 30 -> averaging over time -> after going to overlay
+    MEASURING_PHASE = auto()  # measuring phase 30 -> averaging over time -> after going to pem_overlay
 
 
 def aruco_display(corners, ids, rejected, image):
@@ -128,7 +130,7 @@ def get_marker_positions(t_vec):
     """
     if t_vec is not None:
 
-        if len(t_vec) is 3:
+        if len(t_vec) == 3:
             x = t_vec[0]
             y = t_vec[1]
             z = t_vec[2]
@@ -162,3 +164,51 @@ def convert_byte_array_to_string(byte_array: bytearray) -> str:
         print("Error while decoding received serial input: {}!".format(byte_array))
 
     return string_input
+
+
+def overlay_transparent(background, overlay, x, y):
+
+    background_width = background.shape[1]
+    background_height = background.shape[0]
+
+    if x >= background_width or y >= background_height:
+        return background
+
+    h, w = overlay.shape[0], overlay.shape[1]
+
+    if x + w > background_width:
+        w = background_width - x
+        overlay = overlay[:, :w]
+
+    if y + h > background_height:
+        h = background_height - y
+        overlay = overlay[:h]
+
+    if overlay.shape[2] < 4:
+        overlay = np.concatenate(
+            [
+                overlay,
+                np.ones((overlay.shape[0], overlay.shape[1], 1), dtype=overlay.dtype) * 255
+            ],
+            axis=2,
+        )
+
+    overlay_image = overlay[..., :3]
+    mask = overlay[..., 3:] / 255.0
+
+    background[y:y+h, x:x+w] = (1.0 - mask) * background[y:y+h, x:x+w] + mask * overlay_image
+
+    return background
+
+
+def draw_cross(frame, center_x, center_y, size=6):
+
+    # Drawing cross on the webcam feed
+    center_x = int(center_x)
+    center_y = int(center_y)
+    try:
+        cv2.line(frame, (center_x - int(size/2), center_y), (center_x + int(size/2), center_y), (0, 0, 255), 1)
+        cv2.line(frame, (center_x, center_y - int(size/2)), (center_x, center_y + int(size/2)), (0, 0, 255), 1)
+    except:
+        return frame
+    return frame
